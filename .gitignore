@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+.cache
+nosetests.xml
+coverage.xml
+*.log
+
+# Virtual environments
+venv/
+.venv/
+src/.venv/
+ENV/
+env/
+.claude/venv/
+
+# MyPy cache
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Claude Buddy specific
+.claude/claude_buddy/
+logs/
+test_full_coverage/
+test_*.json
+test_*.txt
+debug.log
+
+# Environment files
+.env
+src/.env
+
+# Node modules
+node_modules/
+src/node_modules/
+package-lock.json
+src/package-lock.json
+src/hooks/external/*/node_modules/
+src/hooks/external/*/packages/*/node_modules/
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+test_*.py

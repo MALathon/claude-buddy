@@ -1,0 +1,25 @@
+{
+  "enabled": true,
+  "proactive_enhancement": true,
+  "max_tokens_per_library": 8000,
+  "max_libraries": 3,
+  "cache_duration_hours": 24,
+  "priority_libraries": [
+    "react",
+    "next.js", 
+    "typescript",
+    "python",
+    "django",
+    "fastapi",
+    "flask",
+    "node.js",
+    "express",
+    "vue.js",
+    "angular",
+    "svelte",
+    "graphql",
+    "neo4j"
+  ],
+  "resource_pool": "documentation",
+  "debug": true
+}

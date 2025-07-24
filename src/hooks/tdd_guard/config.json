@@ -1,0 +1,9 @@
+{
+  "enabled": true,
+  "strict_mode": false,
+  "model": "claude",
+  "test_runner": "pytest",
+  "timeout": 300,
+  "resource_pool": "validation",
+  "debug": true
+}

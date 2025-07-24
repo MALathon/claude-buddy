@@ -1,0 +1,34 @@
+{
+  "resource_pools": {
+    "agents": {
+      "max": 3,
+      "timeout": 300,
+      "description": "Headless Claude agents for auto-fixing and code generation"
+    },
+    "linting": {
+      "max": 2,
+      "timeout": 120,
+      "description": "Linting operations (black, flake8, mypy)"
+    },
+    "testing": {
+      "max": 1,
+      "timeout": 600,
+      "description": "Test execution (pytest, unit tests)"
+    },
+    "general": {
+      "max": 2,
+      "timeout": 180,
+      "description": "General purpose hook operations"
+    },
+    "documentation": {
+      "max": 3,
+      "timeout": 30,
+      "description": "Documentation fetching from Context7 MCP server"
+    }
+  },
+  "settings": {
+    "lock_dir": "locks",
+    "stale_lock_timeout": 300,
+    "debug": true
+  }
+}

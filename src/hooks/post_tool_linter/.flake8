@@ -1,0 +1,10 @@
+[flake8]
+max-line-length = 88
+max-complexity = 10
+max-cognitive-complexity = 7
+extend-ignore = E203,W503,E501,C812,ANN101,ANN102,N400,D202,SIM105,CFQ004,I101,Q000
+select = E,W,F,C,B,A,S,D,N,I,SIM,PIE,PT,Q,RST,T,TCH,ARG,PTH,ERA,PGH,PL,TRY,FLY,NPY,AIR,PERF,FURB,LOG,RUF,CCR
+per-file-ignores = 
+    tests/*:D103,S101,PLR2004,F401
+    __init__.py:F401
+docstring-convention = google

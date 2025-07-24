@@ -1,0 +1,17 @@
+{
+  "name": "claude-buddy",
+  "version": "1.0.0",
+  "description": "Hook system for Claude Code with external tool integrations",
+  "private": true,
+  "scripts": {
+    "test": "pytest",
+    "install-hooks": "npm install",
+    "test-tdd-guard": "echo '{\"event_type\":\"PreToolUse\",\"tool_name\":\"Write\",\"tool_input\":{}}' | node_modules/.bin/tdd-guard"
+  },
+  "dependencies": {
+    "tdd-guard": "^0.5.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "name": "post_tool_linter",
+    "description": "Automatically fixes Python linting issues after file modifications",
+    "version": "1.0.0",
+    "author": "Claude Hooks"
+  },
+  "events": ["PostToolUse"],
+  "tools": ["Edit", "Write", "MultiEdit"],
+  "settings": {
+    "max_iterations": 3,
+    "enabled_linters": ["black", "flake8", "pyright"],
+    "optional_linters": ["mypy", "isort"],
+    "mypy_strict": true,
+    "skip_directories": [".claude", ".git", "__pycache__", ".pytest_cache"],
+    "debug": true,
+    "auto_fix": true
+  },
+  "requirements": {
+    "python": ">=3.8",
+    "packages": ["black", "flake8", "mypy"],
+    "claude_cli": true
+  }
+}

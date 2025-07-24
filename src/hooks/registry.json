@@ -1,0 +1,64 @@
+{
+  "version": "1.0.0",
+  "hooks": {
+    "post_tool_linter": {
+      "name": "Post Tool Linter",
+      "description": "Automatically fixes Python linting issues after file modifications",
+      "category": "code-quality",
+      "language": "python",
+      "events": [
+        "PostToolUse"
+      ],
+      "enabled_by_default": true,
+      "config_file": "post_tool_linter/config.json",
+      "entry_point": "post_tool_linter/hook.py"
+    },
+    "tdd_guard": {
+      "name": "TDD Guard",
+      "description": "Enforces Test-Driven Development practices before code changes",
+      "category": "testing",
+      "language": "python",
+      "events": [
+        "PreToolUse"
+      ],
+      "enabled_by_default": false,
+      "config_file": "tdd_guard/config.json",
+      "entry_point": "tdd_guard/hook.py"
+    },
+    "context7_docs": {
+      "name": "Context7 Documentation",
+      "description": "Enhances Claude's context with current library documentation",
+      "category": "documentation",
+      "language": "python",
+      "events": [
+        "PreToolUse",
+        "PostToolUse"
+      ],
+      "enabled_by_default": false,
+      "config_file": "context7_docs/config.json",
+      "entry_point": "context7_docs/hook.py"
+    }
+  },
+  "categories": {
+    "code-quality": {
+      "name": "Code Quality",
+      "description": "Hooks that improve code quality and maintainability"
+    },
+    "testing": {
+      "name": "Testing",
+      "description": "Hooks for automated testing and validation"
+    },
+    "documentation": {
+      "name": "Documentation",
+      "description": "Hooks for documentation generation and updates"
+    },
+    "security": {
+      "name": "Security",
+      "description": "Security scanning and validation hooks"
+    },
+    "integration": {
+      "name": "Integration",
+      "description": "Hooks that integrate with external tools and services"
+    }
+  }
+}
