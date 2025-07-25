@@ -378,30 +378,47 @@ else:
 if "hooks" not in settings:
     settings["hooks"] = {}
 
-# Add Claude Buddy hooks
+# Add Claude Buddy hooks with new matcher format
 claude_buddy_hooks = {
-    "PreToolUse": {
-        "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PreToolUse"],
-        "description": "Claude Buddy - TDD-Guard and Context7 validation"
-    },
-    "PostToolUse": {
-        "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PostToolUse"], 
-        "description": "Claude Buddy - Post-Tool Linter and Context7 enhancement"
-    }
+    "PreToolUse": [
+        {
+            "matcher": {},  # Empty matcher means all tools
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PreToolUse"],
+                    "description": "Claude Buddy - TDD-Guard and Context7 validation"
+                }
+            ]
+        }
+    ],
+    "PostToolUse": [
+        {
+            "matcher": {},  # Empty matcher means all tools
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PostToolUse"],
+                    "description": "Claude Buddy - Post-Tool Linter and Context7 enhancement"
+                }
+            ]
+        }
+    ]
 }
 
-for event_type, hook_config in claude_buddy_hooks.items():
+for event_type, hook_configs in claude_buddy_hooks.items():
     if event_type not in settings["hooks"]:
         settings["hooks"][event_type] = []
     
     # Check if Claude Buddy hook already exists
     claude_buddy_exists = any(
-        "claude_buddy" in str(hook.get("command", []))
-        for hook in settings["hooks"][event_type]
+        any("claude_buddy" in str(hook.get("command", []))
+            for hook in matcher_config.get("hooks", []))
+        for matcher_config in settings["hooks"][event_type]
     )
     
     if not claude_buddy_exists:
-        settings["hooks"][event_type].append(hook_config)
+        settings["hooks"][event_type].extend(hook_configs)
 
 with open(settings_file, "w") as f:
     json.dump(settings, f, indent=2)
@@ -413,14 +430,26 @@ else
   "hooks": {
     "PreToolUse": [
       {
-        "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PreToolUse"],
-        "description": "Claude Buddy - TDD-Guard and Context7 validation"
+        "matcher": {},
+        "hooks": [
+          {
+            "type": "command",
+            "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PreToolUse"],
+            "description": "Claude Buddy - TDD-Guard and Context7 validation"
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
-        "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PostToolUse"],
-        "description": "Claude Buddy - Post-Tool Linter and Context7 enhancement"
+        "matcher": {},
+        "hooks": [
+          {
+            "type": "command",
+            "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PostToolUse"],
+            "description": "Claude Buddy - Post-Tool Linter and Context7 enhancement"
+          }
+        ]
       }
     ]
   }
