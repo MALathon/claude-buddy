@@ -126,6 +126,7 @@ mkdir -p "$USER_PROJECT_DIR/.claude/commands"
 # Copy Claude Buddy source code to .claude/claude_buddy
 echo "📦 Installing Claude Buddy system..."
 # Use rsync to exclude .claude directories and other unwanted files
+# This copies everything including linter configs (pyproject.toml, .flake8, pyrightconfig.json, etc.)
 rsync -av --exclude=".claude" --exclude="__pycache__" --exclude="*.pyc" "$REPO_ROOT/src/" "$USER_PROJECT_DIR/.claude/claude_buddy/"
 
 # Create Python virtual environment in .claude/claude_buddy
@@ -547,6 +548,10 @@ fi
 echo ""
 echo "🔧 Configuration:"
 echo "   - Hook settings: .claude/claude_buddy/hooks/*/config.json"
+echo "   - Linter configs: .claude/claude_buddy/hooks/post_tool_linter/"
+echo "     • pyproject.toml (Black, isort, mypy, ruff)"
+echo "     • .flake8 (flake8 strict settings)"
+echo "     • pyrightconfig.json (pyright/pylance)"
 echo "   - Timeout settings: Copy .env.example to .env and customize"
 echo "   - Enable/disable hooks by editing config files"
 echo "   - View logs: tail -f .claude/claude_buddy/logs/claude_buddy_*.log"
