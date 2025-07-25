@@ -9,7 +9,7 @@
   "events": ["PostToolUse"],
   "tools": ["Edit", "Write", "MultiEdit"],
   "settings": {
-    "max_iterations": 3,
+    "max_iterations": 10,
     "enabled_linters": ["black", "flake8", "pyright"],
     "optional_linters": ["mypy", "isort"],
     "mypy_strict": true,
