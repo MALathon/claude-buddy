@@ -196,3 +196,162 @@ def wrong_quotes():
     b = 'single quotes'
     c = "mixed quotes'
     return a + b
+
+
+def shadow_builtins():
+    """Shadowing built-in names"""
+    list = [1, 2, 3]  # Shadowing built-in list
+    dict = {"a": 1}   # Shadowing built-in dict
+    str = "hello"     # Shadowing built-in str
+    sum = 0           # Shadowing built-in sum
+    for i in list:
+        sum += i
+    return sum
+
+
+def unpythonic_loops():
+    """Non-pythonic loop patterns"""
+    items = ['a', 'b', 'c', 'd']
+    # Using range(len()) instead of enumerate
+    for i in range(len(items)):
+        print(f"{i}: {items[i]}")
+    
+    # Manual index tracking
+    index = 0
+    for item in items:
+        print(f"{index}: {item}")
+        index += 1
+    
+    # While loop that should be a for loop
+    i = 0
+    while i < len(items):
+        print(items[i])
+        i += 1
+
+
+def dangerous_eval():
+    """Using eval and exec - security risk"""
+    user_input = "2 + 2"
+    result = eval(user_input)  # Dangerous!
+    
+    code = "print('hello')"
+    exec(code)  # Also dangerous!
+    
+    # Using eval for dict creation
+    dict_str = "{'a': 1, 'b': 2}"
+    my_dict = eval(dict_str)  # Should use json.loads or ast.literal_eval
+    
+    return result
+
+
+def bad_comprehensions():
+    """Overly complex or poorly written comprehensions"""
+    # Nested comprehension that's hard to read
+    matrix = [[i*j for j in range(10) if j > 5] for i in range(10) if i % 2 == 0]
+    
+    # Side effects in comprehension
+    results = []
+    [results.append(x*2) for x in range(10)]  # Using comprehension for side effects
+    
+    # Should use generator expression
+    sum_of_squares = sum([x**2 for x in range(1000000)])  # Creates full list in memory
+    
+    return matrix
+
+
+def magic_numbers_everywhere():
+    """Magic numbers without constants"""
+    def calculate_price(quantity):
+        if quantity > 100:  # What does 100 mean?
+            return quantity * 9.99  # What's 9.99?
+        elif quantity > 50:  # What's 50?
+            return quantity * 12.99  # What's 12.99?
+        else:
+            return quantity * 15.99  # What's 15.99?
+    
+    def check_status(code):
+        if code == 200:  # Should use constant
+            return "OK"
+        elif code == 404:  # Should use constant
+            return "Not Found"
+        elif code == 500:  # Should use constant
+            return "Server Error"
+    
+    return calculate_price(75)
+
+
+def poor_class_design():
+    """Class with poor design patterns"""
+    class DataManager:
+        def __init__(self):
+            self.data = []
+            self._private = []  # Single underscore
+            self.__secret = []  # Name mangling
+            self.Public = []    # Capital letter
+        
+        def processData(self):  # camelCase in Python
+            pass
+        
+        def Process_Data(self):  # Inconsistent naming
+            pass
+        
+        def PROCESS_DATA(self):  # All caps for method
+            pass
+        
+        # Property without setter
+        @property
+        def items(self):
+            return self.data
+        
+        # Modifying mutable attribute directly
+        def add_item_wrong(self, item):
+            self.items.append(item)  # Modifying property directly
+
+
+def assertion_misuse():
+    """Using assertions for validation"""
+    def divide(a, b):
+        assert b != 0, "Cannot divide by zero"  # Assertions can be disabled!
+        return a / b
+    
+    def validate_age(age):
+        assert age >= 0, "Age must be positive"  # Should use proper validation
+        assert isinstance(age, int), "Age must be integer"
+        return True
+
+
+def circular_import_risk():
+    """Function that could cause circular imports"""
+    # Importing inside function (sometimes necessary but often bad)
+    def get_user_data():
+        from user_service import UserService  # Import inside function
+        return UserService().get_data()
+    
+    def get_api_data():
+        import api_handler  # Another internal import
+        return api_handler.fetch()
+
+
+def inefficient_operations():
+    """Inefficient string and list operations"""
+    # String concatenation in loop
+    def build_string(items):
+        result = ""
+        for item in items:
+            result += str(item)  # Creates new string each time
+        return result
+    
+    # Repeated list concatenation
+    def build_list(items):
+        result = []
+        for item in items:
+            result = result + [item]  # Creates new list each time
+        return result
+    
+    # Checking membership in list instead of set
+    def check_items(items, lookups):
+        found = []
+        for lookup in lookups:
+            if lookup in items:  # O(n) operation if items is list
+                found.append(lookup)
+        return found

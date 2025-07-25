@@ -647,7 +647,14 @@ Instructions:
 3. Ensure all linting passes: black, flake8, mypy, and pyright/VS Code
 4. DO NOT just say the file looks good - actually fix every issue listed
 
-Common issues to watch for:
+CRITICAL: For "Import could not be resolved" or "reportMissingImports" errors:
+- If the module is meant to exist locally, CREATE IT using Write tool
+- For example: if "from user_service import UserService" fails, create user_service.py
+- If it's a third-party module, either install it or add # type: ignore[import-not-found]
+- If it's a relative import, ensure the __init__.py files exist in all directories
+
+Common issues and REQUIRED fixes:
+- Import "X" could not be resolved: CREATE the missing module/file or add type ignore
 - Unknown type propagation: Use explicit type annotations and cast() when needed
 - Import order: All imports must be at the top of the file (E402)
 - Type incompatibility: Ensure return types and assignments match exactly
@@ -655,10 +662,10 @@ Common issues to watch for:
 - Protected member access: Add public methods or use type: ignore sparingly
 - Missing type annotations: Always annotate function parameters and return types
 - Dict operations: dict.get() can propagate 'unknown' types - use cast() when needed
-- Mypy import-not-found: Add '# type: ignore[import-not-found]' to imports that can't be resolved
-- Missing module stubs: For pytest, tools.concurrency, etc. use type ignore comments
+- Undefined variables: Define them or import them properly
+- Name 'X' is not defined: Import it, define it, or create the module that exports it
 
-The goal is ZERO issues in VS Code/Pylance!"""
+The goal is ZERO issues - no red squiggles in VS Code/Pylance!"""
 
 
 def _log_agent_result(result: CompletedProcess[str]) -> None:
