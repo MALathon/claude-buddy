@@ -92,3 +92,4 @@ src/tools/concurrency/locks/
 final_comprehensive_test.py
 
 demo_project/
+.claude/.claude/
