@@ -183,6 +183,11 @@ try:
     from hooks.unified_logger import init_unified_logging, ComponentType, LogLevel
     from tools.concurrency.concurrency import GlobalConcurrencyManager
     
+    # Initialize logger globally so all hooks use the same instance
+    log_dir = Path(__file__).parent / "logs"
+    global_logger = init_unified_logging(base_dir=log_dir, enable_streaming=False)
+    global_logger.log(ComponentType.SYSTEM, LogLevel.INFO, f"📁 Logs directory: {log_dir}")
+    
     def load_registry():
         """Load the hook registry."""
         registry_path = Path(__file__).parent / "hooks" / "registry.json"
@@ -253,9 +258,8 @@ try:
         
         event_type = sys.argv[1]
         
-        # Initialize logging with absolute path
-        log_dir = Path(__file__).parent / "logs"
-        logger = init_unified_logging(base_dir=log_dir, enable_streaming=False)
+        # Use the global logger instance
+        logger = global_logger
         logger.log(ComponentType.SYSTEM, LogLevel.INFO, f"🎣 Claude Buddy hook: {event_type}")
         
         try:
