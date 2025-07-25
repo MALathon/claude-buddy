@@ -378,11 +378,10 @@ else:
 if "hooks" not in settings:
     settings["hooks"] = {}
 
-# Add Claude Buddy hooks with new matcher format
+# Add Claude Buddy hooks - no matcher field means it applies to all tools
 claude_buddy_hooks = {
     "PreToolUse": [
         {
-            # No matcher field means it applies to all tools
             "hooks": [
                 {
                     "type": "command",
@@ -394,7 +393,6 @@ claude_buddy_hooks = {
     ],
     "PostToolUse": [
         {
-            # No matcher field means it applies to all tools
             "hooks": [
                 {
                     "type": "command",
