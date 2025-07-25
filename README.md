@@ -17,10 +17,7 @@ claude mcp list
 
 **Quick Install (Recommended):**
 ```bash
-# Download and run the installer directly
-curl -sSL https://raw.githubusercontent.com/MALathon/claude-buddy/main/install.sh | bash
-
-# For the latest version (bypasses CDN cache):
+# Download and run the installer directly (bypasses cache)
 curl -sSL "https://raw.githubusercontent.com/MALathon/claude-buddy/main/install.sh?$(date +%s)" | bash
 ```
 
