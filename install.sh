@@ -410,15 +410,15 @@ for event_type, hook_configs in claude_buddy_hooks.items():
     if event_type not in settings["hooks"]:
         settings["hooks"][event_type] = []
     
-    # Check if Claude Buddy hook already exists
-    claude_buddy_exists = any(
-        any("claude_buddy" in str(hook.get("command", []))
-            for hook in matcher_config.get("hooks", []))
-        for matcher_config in settings["hooks"][event_type]
-    )
+    # Remove any existing Claude Buddy hooks (with old or new format)
+    settings["hooks"][event_type] = [
+        matcher_config for matcher_config in settings["hooks"][event_type]
+        if not any("claude_buddy" in str(hook.get("command", ""))
+                   for hook in matcher_config.get("hooks", []))
+    ]
     
-    if not claude_buddy_exists:
-        settings["hooks"][event_type].extend(hook_configs)
+    # Add the new format hooks
+    settings["hooks"][event_type].extend(hook_configs)
 
 with open(settings_file, "w") as f:
     json.dump(settings, f, indent=2)
