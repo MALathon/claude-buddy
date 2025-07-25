@@ -379,13 +379,16 @@ if "hooks" not in settings:
     settings["hooks"] = {}
 
 # Add Claude Buddy hooks - no matcher field means it applies to all tools
+# Use absolute path to avoid path duplication issues
+hook_manager_path = str(Path("$USER_PROJECT_DIR").absolute() / ".claude" / "claude_buddy" / "hook_manager.py")
+
 claude_buddy_hooks = {
     "PreToolUse": [
         {
             "hooks": [
                 {
                     "type": "command",
-                    "command": "python3 .claude/claude_buddy/hook_manager.py PreToolUse",
+                    "command": f"python3 {hook_manager_path} PreToolUse",
                     "description": "Claude Buddy - TDD-Guard and Context7 validation"
                 }
             ]
@@ -396,7 +399,7 @@ claude_buddy_hooks = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": "python3 .claude/claude_buddy/hook_manager.py PostToolUse",
+                    "command": f"python3 {hook_manager_path} PostToolUse",
                     "description": "Claude Buddy - Post-Tool Linter and Context7 enhancement"
                 }
             ]
@@ -423,7 +426,9 @@ with open(settings_file, "w") as f:
 EOF
 else
     echo "📝 Creating new .claude/settings.json..."
-    cat > "$SETTINGS_FILE" << 'EOF'
+    # Use absolute path for hooks
+    HOOK_MANAGER_PATH="$USER_PROJECT_DIR/.claude/claude_buddy/hook_manager.py"
+    cat > "$SETTINGS_FILE" << EOF
 {
   "hooks": {
     "PreToolUse": [
@@ -431,7 +436,7 @@ else
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/claude_buddy/hook_manager.py PreToolUse",
+            "command": "python3 $HOOK_MANAGER_PATH PreToolUse",
             "description": "Claude Buddy - TDD-Guard and Context7 validation"
           }
         ]
@@ -442,7 +447,7 @@ else
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/claude_buddy/hook_manager.py PostToolUse",
+            "command": "python3 $HOOK_MANAGER_PATH PostToolUse",
             "description": "Claude Buddy - Post-Tool Linter and Context7 enhancement"
           }
         ]
