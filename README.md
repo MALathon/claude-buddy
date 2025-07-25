@@ -19,6 +19,9 @@ claude mcp list
 ```bash
 # Download and run the installer directly
 curl -sSL https://raw.githubusercontent.com/MALathon/claude-buddy/main/install.sh | bash
+
+# For the latest version (bypasses CDN cache):
+curl -sSL "https://raw.githubusercontent.com/MALathon/claude-buddy/main/install.sh?$(date +%s)" | bash
 ```
 
 **Manual Install:**
