@@ -10,17 +10,15 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 try:
     from ..base import BaseHook, ConcurrencyManager
-    from ..logger import get_logger
+    from ..unified_logger import get_unified_logger, ComponentType, LogLevel
     from ..external_loader import get_external_loader
     from process_timeouts import TIMEOUTS
 except ImportError:
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
     from hooks.base import BaseHook, ConcurrencyManager
-    from hooks.logger import get_logger
+    from hooks.unified_logger import get_unified_logger, ComponentType, LogLevel
     from hooks.external_loader import get_external_loader
     from process_timeouts import TIMEOUTS
-
-logger = get_logger(__name__)
 
 
 class Context7DocsHook(BaseHook):
@@ -38,17 +36,25 @@ class Context7DocsHook(BaseHook):
         """Initialize Context7 documentation enhancement hook."""
         super().__init__(config, concurrency_manager)
         
-        # Configuration optimized for proactive enhancement
-        self.proactive_enhancement = config.get("proactive_enhancement", True)
-        self.max_tokens_per_library = config.get("max_tokens_per_library", 8000)
-        self.max_libraries = config.get("max_libraries", 3)
-        self.cache_duration_hours = config.get("cache_duration_hours", 24)
+        # Configuration optimized for proactive enhancement with type validation
+        self.proactive_enhancement = self._get_bool_config(config, "proactive_enhancement", True)
+        self.max_tokens_per_library = self._get_int_config(config, "max_tokens_per_library", 8000, min_val=1)
+        self.max_libraries = self._get_int_config(config, "max_libraries", 3, min_val=1)
+        self.cache_duration_hours = self._get_float_config(config, "cache_duration_hours", 24.0, min_val=0.1)
         
         # Priority libraries for fast-moving, version-critical documentation
-        self.priority_libraries = set(config.get("priority_libraries", [
+        priority_libs = config.get("priority_libraries", [
             "react", "next.js", "typescript", "react-query", "tailwindcss",
             "django", "fastapi", "nextauth.js", "prisma"
-        ]))
+        ])
+        # Ensure it's a list
+        if isinstance(priority_libs, list):
+            self.priority_libraries = set(priority_libs)
+        else:
+            self.priority_libraries = set([
+                "react", "next.js", "typescript", "react-query", "tailwindcss",
+                "django", "fastapi", "nextauth.js", "prisma"
+            ])
         
         # Resource pool for concurrency management
         self.resource_pool = config.get("resource_pool", "documentation")
@@ -58,15 +64,39 @@ class Context7DocsHook(BaseHook):
         
         # Documentation cache with timestamp
         self.doc_cache = {}
+    
+    def _get_bool_config(self, config: Dict[str, Any], key: str, default: bool) -> bool:
+        """Get boolean config value with type validation."""
+        value = config.get(key, default)
+        if isinstance(value, bool):
+            return value
+        return default
+    
+    def _get_int_config(self, config: Dict[str, Any], key: str, default: int, min_val: Optional[int] = None) -> int:
+        """Get integer config value with type validation."""
+        value = config.get(key, default)
+        if isinstance(value, int) and (min_val is None or value >= min_val):
+            return value
+        return default
+    
+    def _get_float_config(self, config: Dict[str, Any], key: str, default: float, min_val: Optional[float] = None) -> float:
+        """Get float config value with type validation."""
+        value = config.get(key, default)
+        if isinstance(value, (int, float)) and (min_val is None or value >= min_val):
+            return float(value)
+        return default
         
     def process_event(self, event_data: Dict[str, Any]) -> Tuple[bool, str]:
         """Process event with research-based timing optimization."""
+        logger = get_unified_logger()
+        
         if not self.enabled:
             return True, ""
             
         # Check if Context7 MCP server is available
         if not self.external_loader.is_tool_available("context7"):
-            logger.debug("Context7 MCP server not available - skipping enhancement")
+            logger.log(ComponentType.CONTEXT7, LogLevel.WARNING, 
+                      "⚠️ Context7 MCP server not available - skipping enhancement")
             return True, ""
             
         event_type = event_data.get("event_type")
@@ -109,6 +139,8 @@ class Context7DocsHook(BaseHook):
         
     def _analyze_new_dependencies(self, event_data: Dict[str, Any]) -> Tuple[bool, str]:
         """Analyze new dependencies after file operations."""
+        logger = get_unified_logger()
+        
         try:
             file_path = event_data.get("tool_input", {}).get("file_path", "")
             
@@ -136,18 +168,21 @@ class Context7DocsHook(BaseHook):
             return True, ""
             
         except Exception as e:
-            logger.error(f"Error analyzing new dependencies: {e}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                      f"❌ Error analyzing new dependencies: {e}")
             return True, ""
         
     def _fetch_proactive_documentation(self, event_data: Dict[str, Any]) -> Tuple[bool, str]:
         """Fetch documentation proactively before code generation."""
+        logger = get_unified_logger()
         try:
             # Detect libraries that need documentation
             libraries = self._detect_relevant_libraries(event_data)
             if not libraries:
                 return True, ""
                 
-            logger.info(f"Context7: Detected libraries {libraries}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.INFO, 
+                      f"📚 Context7: Detected libraries {libraries}")
             
             # Fetch documentation for detected libraries
             context_enhancements = []
@@ -164,7 +199,8 @@ class Context7DocsHook(BaseHook):
                 return True, ""
                 
         except Exception as e:
-            logger.error(f"Context7 enhancement error: {e}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                      f"❌ Context7 enhancement error: {e}")
             return True, ""
             
     def _detect_relevant_libraries(self, event_data: Dict[str, Any]) -> List[str]:
@@ -244,14 +280,43 @@ class Context7DocsHook(BaseHook):
                     
         # Python imports
         python_patterns = [
-            r'from\s+([a-zA-Z][a-zA-Z0-9_]*)',
-            r'import\s+([a-zA-Z][a-zA-Z0-9_]*)'
+            r'from\s+([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_]+)*)',
+            r'import\s+([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_]+)*)'
         ]
         
         for pattern in python_patterns:
             for match in re.finditer(pattern, content):
                 lib = match.group(1).split('.')[0]
-                if lib not in ['os', 'sys', 'json', 'typing', 'pathlib']:
+                # Filter out standard library modules
+                stdlib_modules = {
+                    'os', 'sys', 'json', 'typing', 'pathlib', 'collections',
+                    're', 'datetime', 'time', 'random', 'math', 'itertools',
+                    'functools', 'operator', 'copy', 'io', 'pickle', 'csv',
+                    'sqlite3', 'urllib', 'http', 'email', 'html', 'xml',
+                    'unittest', 'doctest', 'pdb', 'profile', 'timeit',
+                    'argparse', 'logging', 'warnings', 'traceback', 'inspect',
+                    'ast', 'types', 'enum', 'dataclasses', 'abc', 'asyncio',
+                    'concurrent', 'multiprocessing', 'threading', 'queue',
+                    'socket', 'ssl', 'select', 'signal', 'subprocess', 'shutil',
+                    'tempfile', 'glob', 'fnmatch', 'fileinput', 'filecmp',
+                    'configparser', 'hashlib', 'hmac', 'secrets', 'uuid',
+                    'contextlib', 'decimal', 'fractions', 'statistics', 'cmath',
+                    'array', 'bisect', 'heapq', 'weakref', 'copyreg', 'shelve',
+                    'marshal', 'dbm', 'zlib', 'gzip', 'bz2', 'lzma', 'zipfile',
+                    'tarfile', 'readline', 'rlcompleter', 'pty', 'fcntl', 'termios',
+                    'tty', 'syslog', 'platform', 'errno', 'ctypes', 'struct',
+                    'codecs', 'encodings', 'unicodedata', 'stringprep', 'locale',
+                    'gettext', 'optparse', 'getopt', 'textwrap', 'curses', 'cmd',
+                    'shlex', 'tkinter', 'turtle', 'pydoc', 'test', 'bdb', 'faulthandler',
+                    'builtins', '__future__', '__main__', '_thread', 'gc', 'importlib',
+                    'pkgutil', 'modulefinder', 'runpy', 'parser', 'symbol', 'token',
+                    'keyword', 'tokenize', 'tabnanny', 'pyclbr', 'py_compile', 'compileall',
+                    'dis', 'pickletools', 'distutils', 'site', 'venv', 'numbers',
+                    'cgi', 'cgitb', 'wsgiref', 'smtplib', 'smtpd', 'telnetlib',
+                    'uuid', 'socketserver', 'http', 'xmlrpc', 'ipaddress', 'ftplib',
+                    'poplib', 'imaplib', 'nntplib', 'pathlib', 'Path'
+                }
+                if lib not in stdlib_modules:
                     libs.add(lib)
                     
         return libs
@@ -288,6 +353,8 @@ class Context7DocsHook(BaseHook):
         
     def _get_library_documentation(self, library: str, event_data: Dict[str, Any]) -> Optional[str]:
         """Fetch documentation for a library via Context7 MCP."""
+        logger = get_unified_logger()
+        
         try:
             # Check cache first
             cache_key = f"{library}_{self._infer_topic(event_data)}"
@@ -315,11 +382,14 @@ class Context7DocsHook(BaseHook):
             return None
             
         except Exception as e:
-            logger.warning(f"Could not fetch docs for {library}: {e}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.WARNING, 
+                      f"⚠️ Could not fetch docs for {library}: {e}")
             return None
             
     def _resolve_library_id(self, library: str) -> Optional[str]:
         """Resolve library name to Context7 ID."""
+        logger = get_unified_logger()
+        
         try:
             mcp_request = {
                 "jsonrpc": "2.0",
@@ -340,18 +410,22 @@ class Context7DocsHook(BaseHook):
                     text = content[0].get("text", "")
                     resolved_id = self._select_best_library_match(text, library)
                     if resolved_id:
-                        logger.debug(f"Resolved {library} to {resolved_id}")
+                        logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                                  f"🔍 Resolved {library} to {resolved_id}")
                         return resolved_id
                     
             # Fallback to library name if resolution fails
             return library
             
         except Exception as e:
-            logger.warning(f"Could not resolve library ID for {library}: {e}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.WARNING, 
+                      f"⚠️ Could not resolve library ID for {library}: {e}")
             return library  # Fallback to original name
             
     def _fetch_library_docs(self, lib_id: str, topic: Optional[str] = None) -> Optional[str]:
         """Fetch documentation for library ID."""
+        logger = get_unified_logger()
+        
         try:
             mcp_request = {
                 "jsonrpc": "2.0",
@@ -377,13 +451,15 @@ class Context7DocsHook(BaseHook):
                     # Extract text from the content array
                     docs = content[0].get("text", "")
                     if docs:
-                        logger.debug(f"Fetched documentation for {lib_id} ({len(docs)} chars)")
+                        logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                                  f"📖 Fetched documentation for {lib_id} ({len(docs)} chars)")
                         return docs
                     
             return None
             
         except Exception as e:
-            logger.warning(f"Could not fetch docs for {lib_id}: {e}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.WARNING, 
+                      f"⚠️ Could not fetch docs for {lib_id}: {e}")
             return None
             
     def _infer_topic(self, event_data: Dict[str, Any]) -> Optional[str]:
@@ -395,7 +471,7 @@ class Context7DocsHook(BaseHook):
             "authentication": ["auth", "login", "token", "session", "passport"],
             "routing": ["route", "router", "path", "endpoint", "api"],
             "testing": ["test", "spec", "mock", "jest", "pytest"],
-            "hooks": ["useState", "useEffect", "useCallback", "useMemo"],
+            "hooks": ["usestate", "useeffect", "usecallback", "usememo"],
             "components": ["component", "render", "props", "jsx", "tsx"],
             "database": ["db", "query", "model", "schema", "migration"]
         }
@@ -420,11 +496,50 @@ class Context7DocsHook(BaseHook):
         if not enhancements:
             return ""
             
-        parts = ["📚 Context7: Enhanced context with current documentation"]
-        parts.extend(enhancements)
-        parts.append("💡 Documentation is current as of latest library versions")
+        # Extract key information from each enhancement and format concisely
+        formatted_parts = ["📚 Context7: Enhanced context with current documentation", ""]
         
-        return "\n".join(parts)
+        for i, enhancement in enumerate(enhancements[:2]):  # Limit to 2 libraries for readability
+            # Extract library info (first few lines usually contain the key info)
+            lines = enhancement.split('\n')
+            
+            # Find title and description
+            title = ""
+            description = ""
+            code_snippet = ""
+            
+            for line in lines[:20]:  # Look at first 20 lines
+                if line.startswith('TITLE:'):
+                    title = line.replace('TITLE:', '').strip()
+                elif line.startswith('DESCRIPTION:'):
+                    description = line.replace('DESCRIPTION:', '').strip()
+                elif line.startswith('CODE:') and not code_snippet:
+                    # Find the first code block
+                    code_start = lines.index(line)
+                    code_lines = []
+                    for code_line in lines[code_start+1:code_start+6]:  # Take up to 5 lines
+                        if code_line.strip() and not code_line.startswith('```'):
+                            code_lines.append(code_line)
+                        elif code_line.startswith('```') and code_lines:
+                            break
+                    code_snippet = '\n'.join(code_lines)
+                    break
+            
+            # Create a concise summary
+            if title or description:
+                formatted_parts.append(f"🔸 **{title[:60]}{'...' if len(title) > 60 else ''}**")
+                if description:
+                    formatted_parts.append(f"   {description[:100]}{'...' if len(description) > 100 else ''}")
+                if code_snippet:
+                    formatted_parts.append(f"   ```\n   {code_snippet[:150]}{'...' if len(code_snippet) > 150 else ''}\n   ```")
+                formatted_parts.append("")
+        
+        if len(enhancements) > 2:
+            formatted_parts.append(f"... and {len(enhancements) - 2} more documentation entries available")
+            
+        formatted_parts.append("💡 Full documentation available for enhanced code completion")
+        
+        return "\n".join(formatted_parts)
         
     def is_applicable(self, event_data: Dict[str, Any]) -> bool:
         """Check if this hook should process the event."""
@@ -519,10 +634,13 @@ class Context7DocsHook(BaseHook):
         
     def _call_mcp_server(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Call Context7 MCP server with JSON-RPC request."""
+        logger = get_unified_logger()
+        
         try:
             tool_info = self.external_loader.get_tool_info("context7")
             if not tool_info or not tool_info.get("available"):
-                logger.warning("Context7 MCP server not available")
+                logger.log(ComponentType.CONTEXT7, LogLevel.WARNING, 
+                          "⚠️ Context7 MCP server not available")
                 return None
                 
             mcp_config = tool_info.get("mcp_config", {})
@@ -532,11 +650,14 @@ class Context7DocsHook(BaseHook):
                 # Use HTTP transport (remote server)
                 url = mcp_config.get("url")
                 if not url:
-                    logger.error("No URL configured for Context7 HTTP transport")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                              "❌ No URL configured for Context7 HTTP transport")
                     return None
                     
-                logger.debug(f"Calling Context7 MCP via HTTP: {url}")
-                logger.debug(f"Request: {json.dumps(request)}")
+                logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                          f"🌐 Calling Context7 MCP via HTTP: {url}")
+                logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                          f"📤 Request: {json.dumps(request)[:200]}...")
                 
                 import requests
                 response = requests.post(
@@ -550,11 +671,13 @@ class Context7DocsHook(BaseHook):
                 )
                 
                 if response.status_code != 200:
-                    logger.error(f"Context7 HTTP error: {response.status_code} - {response.text}")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                              f"❌ Context7 HTTP error: {response.status_code} - {response.text[:200]}...")
                     return None
                     
                 result = response.json()
-                logger.debug(f"HTTP response: {json.dumps(result, indent=2)[:500]}...")
+                logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                          f"📥 HTTP response: {json.dumps(result, indent=2)[:200]}...")
                 return result
                 
             else:
@@ -563,13 +686,15 @@ class Context7DocsHook(BaseHook):
                 args = mcp_config.get("args", [])
                 
                 if not command:
-                    logger.error("No command configured for Context7 MCP server")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                              "❌ No command configured for Context7 MCP server")
                     return None
                     
                 # Build full command with stdio transport
                 full_command = [command] + args + ["--transport", "stdio"]
                 
-                logger.debug(f"Calling Context7 MCP: {full_command}")
+                logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                          f"🔧 Calling Context7 MCP: {' '.join(full_command)}")
                 
                 # Start MCP server process
                 import subprocess
@@ -600,13 +725,15 @@ class Context7DocsHook(BaseHook):
                         "id": 0
                     }
                     
-                    logger.debug(f"Sending initialize: {json.dumps(init_request)}")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                              f"📤 Sending initialize: {json.dumps(init_request)[:200]}...")
                     process.stdin.write(json.dumps(init_request) + "\n")
                     process.stdin.flush()
                     
                     # Read initialization response
                     init_response = process.stdout.readline()
-                    logger.debug(f"Init response: {init_response}")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                              f"📥 Init response: {init_response[:200]}...")
                     
                     # Step 2: Send initialized notification
                     initialized_notification = {
@@ -615,18 +742,21 @@ class Context7DocsHook(BaseHook):
                         "params": {}
                     }
                     
-                    logger.debug(f"Sending initialized: {json.dumps(initialized_notification)}")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                              f"📤 Sending initialized: {json.dumps(initialized_notification)}")
                     process.stdin.write(json.dumps(initialized_notification) + "\n")
                     process.stdin.flush()
                     
                     # Step 3: Send the actual tool request
-                    logger.debug(f"Sending request: {json.dumps(request)}")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                              f"📤 Sending request: {json.dumps(request)[:200]}...")
                     process.stdin.write(json.dumps(request) + "\n")
                     process.stdin.flush()
                     
                     # Read tool response
                     tool_response = process.stdout.readline()
-                    logger.debug(f"Tool response: {tool_response}")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                              f"📥 Tool response: {tool_response[:200]}...")
                     
                     # Close the process
                     process.stdin.close()
@@ -634,7 +764,8 @@ class Context7DocsHook(BaseHook):
                     
                     if tool_response:
                         response = json.loads(tool_response)
-                        logger.debug(f"Parsed response: {json.dumps(response, indent=2)[:500]}...")
+                        logger.log(ComponentType.CONTEXT7, LogLevel.DEBUG, 
+                                  f"📋 Parsed response: {json.dumps(response, indent=2)[:200]}...")
                         return response
                         
                     return None
@@ -642,26 +773,33 @@ class Context7DocsHook(BaseHook):
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait()
-                    logger.warning("Context7 MCP server request timed out")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.WARNING, 
+                              "⏱️ Context7 MCP server request timed out (subprocess)")
                     return None
                 except Exception as e:
                     process.kill()
                     process.wait()
-                    logger.error(f"Error in MCP communication: {e}")
+                    logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                              f"❌ Error in MCP communication: {e}")
                     return None
             
         except requests.RequestException as e:
-            logger.error(f"Context7 HTTP request error: {e}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                      f"❌ Context7 HTTP request error: {e}")
             return None
         except subprocess.TimeoutExpired:
-            logger.warning("Context7 MCP server request timed out")
+            logger.log(ComponentType.CONTEXT7, LogLevel.WARNING, 
+                      "⏱️ Context7 MCP server request timed out")
             return None
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON response from Context7 MCP server: {e}")
-            logger.error(f"Raw response: {response.text if 'response' in locals() else result.stdout if 'result' in locals() else 'N/A'}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                      f"❌ Invalid JSON response from Context7 MCP server: {e}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                      f"📄 Raw response: {response.text if 'response' in locals() else result.stdout if 'result' in locals() else 'N/A'}")
             return None
         except Exception as e:
-            logger.error(f"Error calling Context7 MCP server: {e}")
+            logger.log(ComponentType.CONTEXT7, LogLevel.ERROR, 
+                      f"❌ Error calling Context7 MCP server: {e}")
             return None
             
     def get_config_schema(self) -> Dict[str, Any]:
