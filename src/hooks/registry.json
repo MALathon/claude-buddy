@@ -21,7 +21,7 @@
       "events": [
         "PreToolUse"
       ],
-      "enabled_by_default": false,
+      "enabled_by_default": true,
       "config_file": "tdd_guard/config.json",
       "entry_point": "tdd_guard/hook.py"
     },
@@ -34,7 +34,7 @@
         "PreToolUse",
         "PostToolUse"
       ],
-      "enabled_by_default": false,
+      "enabled_by_default": true,
       "config_file": "context7_docs/config.json",
       "entry_point": "context7_docs/hook.py"
     }

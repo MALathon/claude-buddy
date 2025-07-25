@@ -1,4 +1,5 @@
 {
+  "enabled": true,
   "metadata": {
     "name": "post_tool_linter",
     "description": "Automatically fixes Python linting issues after file modifications",
