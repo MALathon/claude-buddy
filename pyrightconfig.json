@@ -1,0 +1,50 @@
+{
+  "include": [
+    "."
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/node_modules",
+    "**/.venv",
+    "**/.tox",
+    "**/.git",
+    "**/.claude",
+    "**/build",
+    "**/dist"
+  ],
+  "defineConstant": {
+    "DEBUG": true
+  },
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnusedImport": true,
+  "reportUnusedClass": true,
+  "reportUnusedFunction": true,
+  "reportUnusedVariable": true,
+  "reportDuplicateImport": true,
+  "reportPrivateUsage": true,
+  "reportConstantRedefinition": "error",
+  "reportIncompatibleMethodOverride": "error",
+  "reportMissingTypeArgument": "warning",
+  "reportUnnecessaryIsInstance": "warning",
+  "reportUnnecessaryCast": "warning",
+  "reportUnnecessaryComparison": "warning",
+  "reportImplicitStringConcatenation": false,
+  "reportUnboundVariable": "error",
+  "reportOptionalMemberAccess": "error",
+  "strictListInference": true,
+  "strictDictionaryInference": true,
+  "strictSetInference": true,
+  "analyzeUnannotatedFunctions": true,
+  "useLibraryCodeForTypes": true,
+  "typeCheckingMode": "strict",
+  "pythonVersion": "3.12",
+  "pythonPlatform": "All",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.12",
+      "extraPaths": []
+    }
+  ]
+}
