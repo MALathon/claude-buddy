@@ -268,21 +268,50 @@ try:
             
             event_data["event_type"] = event_type
             
+            # Log ALL Claude events (not just Claude Buddy events)
+            tool_name = event_data.get("tool_name", "unknown")
+            tool_input = event_data.get("tool_input", {})
+            
+            # Log the raw event for complete visibility
+            logger.log(
+                ComponentType.SYSTEM, 
+                LogLevel.INFO, 
+                f"Claude Event: {event_type} - Tool: {tool_name}",
+                metadata={
+                    "event_type": event_type,
+                    "tool_name": tool_name,
+                    "tool_input": tool_input,
+                    "full_event": event_data
+                }
+            )
+            
             # Get and run enabled hooks
             enabled_hooks = get_enabled_hooks(event_type)
             
             if not enabled_hooks:
+                logger.log(ComponentType.SYSTEM, LogLevel.DEBUG, f"No hooks enabled for {event_type}")
                 sys.exit(0)
+            
+            logger.log(ComponentType.SYSTEM, LogLevel.INFO, f"Running {len(enabled_hooks)} hooks for {event_type}")
             
             all_success = True
             for hook_info in enabled_hooks:
+                hook_name = hook_info["name"]
+                logger.log(ComponentType.SYSTEM, LogLevel.INFO, f"Executing hook: {hook_name}")
+                
                 success = run_hook(hook_info, event_data)
+                
                 if not success:
+                    logger.log(ComponentType.SYSTEM, LogLevel.ERROR, f"Hook failed: {hook_name}")
                     all_success = False
+                else:
+                    logger.log(ComponentType.SYSTEM, LogLevel.SUCCESS, f"Hook completed: {hook_name}")
             
+            logger.log(ComponentType.SYSTEM, LogLevel.INFO, f"All hooks completed for {event_type}")
             sys.exit(0 if all_success else 1)
             
         except Exception as e:
+            logger.log(ComponentType.SYSTEM, LogLevel.ERROR, f"Hook manager error: {e}", metadata={"error": str(e)})
             print(f"Hook manager error: {e}", file=sys.stderr)
             sys.exit(1)
 
