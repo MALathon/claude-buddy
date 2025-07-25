@@ -386,7 +386,7 @@ claude_buddy_hooks = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PreToolUse"],
+                    "command": "python3 .claude/claude_buddy/hook_manager.py PreToolUse",
                     "description": "Claude Buddy - TDD-Guard and Context7 validation"
                 }
             ]
@@ -398,7 +398,7 @@ claude_buddy_hooks = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PostToolUse"],
+                    "command": "python3 .claude/claude_buddy/hook_manager.py PostToolUse",
                     "description": "Claude Buddy - Post-Tool Linter and Context7 enhancement"
                 }
             ]
@@ -434,7 +434,7 @@ else
         "hooks": [
           {
             "type": "command",
-            "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PreToolUse"],
+            "command": "python3 .claude/claude_buddy/hook_manager.py PreToolUse",
             "description": "Claude Buddy - TDD-Guard and Context7 validation"
           }
         ]
@@ -446,7 +446,7 @@ else
         "hooks": [
           {
             "type": "command",
-            "command": ["python3", ".claude/claude_buddy/hook_manager.py", "PostToolUse"],
+            "command": "python3 .claude/claude_buddy/hook_manager.py PostToolUse",
             "description": "Claude Buddy - Post-Tool Linter and Context7 enhancement"
           }
         ]
