@@ -559,18 +559,25 @@ def is_claude_available() -> bool:
     )
 
 
-def setup_debug_logging() -> bool:
-    """Check if debug logging is enabled."""
+def setup_debug_logging() -> Optional[Path]:
+    """Set up debug logging directory if enabled.
+    
+    Returns:
+        Path to debug directory if enabled, None otherwise
+    """
     # Check if debug is enabled in hook config
     config_path = Path(__file__).parent / "config.json"
     if config_path.exists():
         try:
             with open(config_path) as f:
                 config = json.load(f)
-            return config.get("settings", {}).get("debug", False)
+            if config.get("settings", {}).get("debug", False):
+                debug_dir = Path(__file__).parent / "debug"
+                debug_dir.mkdir(exist_ok=True)
+                return debug_dir
         except Exception:
             pass
-    return False
+    return None
 
 def print_response(reasoning: str, details: Optional[Dict[str, Any]] = None) -> None:
     """Print formatted response.
@@ -942,54 +949,114 @@ class PostToolLinterHook(BaseHook):
 
     def process_event(self, event_data: Dict[str, Any]) -> Tuple[bool, str]:
         """Process a Claude Code event."""
+        logger = get_unified_logger()
+        
+        # Check if hook is enabled
+        if not self.enabled:
+            return True, ""
+        
+        # Log event details
+        event_type = event_data.get("event_type", "Unknown")
+        tool_name = event_data.get("tool_name", "Unknown")
+        logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.INFO, 
+                  f"🔧 Processing event: {event_type} with tool: {tool_name}")
+        
         # Only process PostToolUse events
         if event_data.get("event_type") != "PostToolUse":
+            logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.DEBUG, 
+                      f"⏭️ Skipping event type: {event_type} (not PostToolUse)")
             return True, ""
 
         # Only process file editing tools
-        tool_name = event_data.get("tool_name", "")
         if tool_name not in ["Edit", "Write", "MultiEdit", "NotebookEdit"]:
+            logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.DEBUG, 
+                      f"⏭️ Skipping tool: {tool_name} (not a file editing tool)")
             return True, ""
 
         # Get file path
         tool_input = event_data.get("tool_input", {})
         file_path = tool_input.get("file_path")
         if not file_path:
+            logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.WARNING, 
+                      "⚠️ No file_path found in tool_input")
             return True, ""
+
+        logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.INFO, 
+                  f"📂 Processing file: {file_path}")
 
         # Check if we should process this file
         if not should_process_file(file_path):
+            logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.DEBUG, 
+                      f"⏭️ Skipping file: {file_path} (not a Python file or in skip list)")
             return True, ""
+
+        logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.INFO, 
+                  f"🔍 Running linters on: {file_path}")
 
         # Run linters
         all_pass, issues = run_linters(file_path)
+
+        if all_pass:
+            logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.SUCCESS, 
+                      f"✅ All linters passed for: {file_path}")
+        else:
+            # Split issues string back into individual issues
+            issue_list = [issue.strip() for issue in issues.split('\n\n') if issue.strip()]
+            logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.WARNING, 
+                      f"⚠️ Found {len(issue_list)} linting issues in: {file_path}")
+            
+            # Log specific issues
+            for i, issue in enumerate(issue_list[:3]):  # Log first 3 issues
+                logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.DEBUG, 
+                          f"   📋 Issue {i+1}: {issue}")
+            if len(issue_list) > 3:
+                logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.DEBUG, 
+                          f"   ... and {len(issue_list) - 3} more issues")
 
         if all_pass:
             return True, f"✅ {os.path.basename(file_path)} - No linting issues found"
 
         # Only run autofix if enabled
         if self.config.get("settings", {}).get("auto_fix", True):
+            logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.INFO, 
+                      f"🔧 Starting auto-fix process for: {file_path}")
+            
             # Use concurrency manager if available
             if isinstance(
                 self.concurrency_manager, (ConcurrencyManager, _FallbackManager)
             ):
+                logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.DEBUG, 
+                          "🔒 Acquiring resources for auto-fix process")
+                          
                 exit_code = process_file_with_autofix(file_path, issues, self.concurrency_manager)
+                
+                logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.DEBUG, 
+                          f"🔧 Auto-fix process completed with exit code: {exit_code}")
                 
                 # Check if autofix was successful
                 if exit_code == 0:
+                    logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.INFO, 
+                              "✅ Auto-fix successful, verifying results")
+                    
                     # Verify linting actually passes now
                     all_pass_now, remaining_issues = run_linters(file_path)
                     if all_pass_now:
+                        logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.SUCCESS, 
+                                  f"🎉 All linting issues resolved for: {file_path}")
                         return (
                             True,
                             f"✅ {os.path.basename(file_path)} - All linting issues fixed successfully!",
                         )
                     else:
+                        logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.WARNING, 
+                                  f"⚠️ Some issues remain after auto-fix: {len(remaining_issues)} issues")
                         return (
                             True,
                             f"⚠️ {os.path.basename(file_path)} - Claude autofix completed but some issues remain:\n{remaining_issues}",
                         )
                 else:
+                    logger.log(ComponentType.POST_TOOL_LINTER, LogLevel.ERROR, 
+                              f"❌ Auto-fix failed with exit code: {exit_code}")
                     return (
                         True,
                         f"❌ {os.path.basename(file_path)} - Claude autofix failed, issues remain:\n{issues}",
