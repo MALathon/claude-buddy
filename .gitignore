@@ -90,3 +90,5 @@ test_*.py
 src/hooks/post_tool_linter/debug/
 src/tools/concurrency/locks/
 final_comprehensive_test.py
+
+demo_project/
