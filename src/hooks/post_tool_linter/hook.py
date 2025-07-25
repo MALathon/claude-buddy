@@ -642,10 +642,19 @@ Current issues that MUST be fixed:
 {issues}
 
 Instructions:
-1. Use Edit or MultiEdit to fix ALL issues listed above
-2. If needed to resolve type errors, you may modify other imported files
-3. Ensure all linting passes: black, flake8, mypy, and pyright/VS Code
-4. DO NOT just say the file looks good - actually fix every issue listed
+1. Use Edit, MultiEdit, or Write to fix ALL issues listed above
+2. You have FULL FREEDOM to modify ANY file in the project to fix these issues
+3. Create new files, modify existing files, refactor code - do whatever it takes
+4. Ensure all linting passes: black, flake8, mypy, and pyright/VS Code
+5. DO NOT just say the file looks good - actually fix every issue listed
+
+YOU ARE AUTHORIZED TO:
+- Create new modules, classes, functions as needed
+- Modify any imported files to fix type issues
+- Refactor code structure if it helps resolve issues
+- Add type stubs, protocols, or abstract base classes
+- Create __init__.py files in any directory
+- Make project-wide changes to ensure consistency
 
 CRITICAL: For "Import could not be resolved" or "reportMissingImports" errors:
 - If the module is meant to exist locally, CREATE IT using Write tool
@@ -665,7 +674,16 @@ Common issues and REQUIRED fixes:
 - Undefined variables: Define them or import them properly
 - Name 'X' is not defined: Import it, define it, or create the module that exports it
 
-The goal is ZERO issues - no red squiggles in VS Code/Pylance!"""
+The goal is ZERO issues - no red squiggles in VS Code/Pylance!
+
+IMPORTANT: 
+- Do not stop until EVERY issue is fixed
+- If fixing one issue creates new issues, fix those too
+- Use Grep or Glob to find related files if needed
+- Read files to understand context before making changes
+- Be thorough and systematic - this is automated fixing, not a suggestion
+
+You are an autonomous linting fix agent - take whatever actions necessary to achieve zero linting errors."""
 
 
 def _log_agent_result(result: CompletedProcess[str]) -> None:
