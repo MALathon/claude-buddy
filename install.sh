@@ -120,6 +120,7 @@ fi
 # Create .claude directory structure in user's project
 echo "📁 Setting up .claude directory structure..."
 mkdir -p "$USER_PROJECT_DIR/.claude/claude_buddy"
+mkdir -p "$USER_PROJECT_DIR/.claude/claude_buddy/logs"
 mkdir -p "$USER_PROJECT_DIR/.claude/commands"
 
 # Copy Claude Buddy source code to .claude/claude_buddy
@@ -252,8 +253,9 @@ try:
         
         event_type = sys.argv[1]
         
-        # Initialize logging
-        logger = init_unified_logging(enable_streaming=False)
+        # Initialize logging with absolute path
+        log_dir = Path(__file__).parent / "logs"
+        logger = init_unified_logging(base_dir=log_dir, enable_streaming=False)
         logger.log(ComponentType.SYSTEM, LogLevel.INFO, f"🎣 Claude Buddy hook: {event_type}")
         
         try:
