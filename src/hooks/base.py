@@ -96,7 +96,9 @@ class BaseHook(ABC):
     ) -> None:
         """Initialize hook with configuration and optional concurrency manager."""
         self.config = config
-        self.enabled = config.get("enabled", True)
+        # Ensure enabled is always a boolean
+        enabled_value = config.get("enabled", True)
+        self.enabled = enabled_value if isinstance(enabled_value, bool) else True
         self.concurrency_manager = concurrency_manager
 
     @abstractmethod

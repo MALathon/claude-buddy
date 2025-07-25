@@ -124,7 +124,8 @@ mkdir -p "$USER_PROJECT_DIR/.claude/commands"
 
 # Copy Claude Buddy source code to .claude/claude_buddy
 echo "📦 Installing Claude Buddy system..."
-cp -r "$REPO_ROOT/src/"* "$USER_PROJECT_DIR/.claude/claude_buddy/"
+# Use rsync to exclude .claude directories and other unwanted files
+rsync -av --exclude=".claude" --exclude="__pycache__" --exclude="*.pyc" "$REPO_ROOT/src/" "$USER_PROJECT_DIR/.claude/claude_buddy/"
 
 # Create Python virtual environment in .claude/claude_buddy
 echo "🔧 Creating virtual environment for Claude Buddy..."
@@ -429,8 +430,11 @@ fi
 
 # Copy slash commands
 echo "📝 Installing Claude Buddy slash commands..."
-if [ -d "$REPO_ROOT/.claude/commands" ]; then
-    cp -r "$REPO_ROOT/.claude/commands/"* "$USER_PROJECT_DIR/.claude/commands/" 2>/dev/null || true
+if [ -d "$REPO_ROOT/src/.claude/commands" ]; then
+    cp -r "$REPO_ROOT/src/.claude/commands/"* "$USER_PROJECT_DIR/.claude/commands/" 2>/dev/null || true
+elif [ -d "$USER_PROJECT_DIR/.claude/claude_buddy/.claude/commands" ]; then
+    # Commands were already copied with the src directory
+    cp -r "$USER_PROJECT_DIR/.claude/claude_buddy/.claude/commands/"* "$USER_PROJECT_DIR/.claude/commands/" 2>/dev/null || true
 fi
 
 # Copy .env.example if it doesn't exist in user project

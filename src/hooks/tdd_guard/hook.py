@@ -10,17 +10,15 @@ from typing import Any, Dict, Optional, Tuple
 
 try:
     from ..base import BaseHook, ConcurrencyManager
-    from ..logger import get_logger
+    from ..unified_logger import get_unified_logger, ComponentType, LogLevel
     from ..external_loader import get_external_loader
     from process_timeouts import TIMEOUTS
 except ImportError:
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
     from hooks.base import BaseHook, ConcurrencyManager
-    from hooks.logger import get_logger
+    from hooks.unified_logger import get_unified_logger, ComponentType, LogLevel
     from hooks.external_loader import get_external_loader
     from process_timeouts import TIMEOUTS
-
-logger = get_logger(__name__)
 
 
 class TDDGuardHook(BaseHook):
@@ -34,62 +32,105 @@ class TDDGuardHook(BaseHook):
         """Initialize TDD-Guard hook."""
         super().__init__(config, concurrency_manager)
         
-        # TDD-Guard configuration
-        self.strict_mode = config.get("strict_mode", False)
-        self.model = config.get("model", "claude")
-        self.test_runner = config.get("test_runner", "pytest")
-        self.timeout = config.get("timeout", TIMEOUTS.for_tdd_guard_validation())
+        # TDD-Guard configuration with type validation
+        self.strict_mode = self._get_bool_config(config, "strict_mode", False)
+        self.model = str(config.get("model", "claude"))
+        self.test_runner = str(config.get("test_runner", "pytest"))
+        timeout_val = config.get("timeout", TIMEOUTS.for_tdd_guard_validation())
+        self.timeout = timeout_val if isinstance(timeout_val, (int, float)) and timeout_val > 0 else TIMEOUTS.for_tdd_guard_validation()
         
         # Resource pool for concurrency management
         self.resource_pool = config.get("resource_pool", "testing")
         
         # External tool management
         self.external_loader = get_external_loader()
+    
+    def _get_bool_config(self, config: Dict[str, Any], key: str, default: bool) -> bool:
+        """Get boolean config value with type validation."""
+        value = config.get(key, default)
+        if isinstance(value, bool):
+            return value
+        return default
         
     def process_event(self, event_data: Dict[str, Any]) -> Tuple[bool, str]:
         """Process event by validating TDD compliance."""
+        logger = get_unified_logger()
+        
+        # Log event details
+        event_type = event_data.get("event_type", "Unknown")
+        tool_name = event_data.get("tool_name", "Unknown")
+        logger.log(ComponentType.TDD_GUARD, LogLevel.INFO, 
+                  f"🛡️ TDD-Guard processing: {event_type} with tool: {tool_name}")
+        
         if not self.enabled:
+            logger.log(ComponentType.TDD_GUARD, LogLevel.DEBUG, 
+                      "⏭️ TDD-Guard disabled, skipping validation")
             return True, ""
             
         # Only process PreToolUse events for code operations
         if not self.is_applicable(event_data):
+            logger.log(ComponentType.TDD_GUARD, LogLevel.DEBUG, 
+                      f"⏭️ Event not applicable for TDD validation: {event_type}")
             return True, ""
             
+        logger.log(ComponentType.TDD_GUARD, LogLevel.INFO, 
+                  f"🔍 Running TDD validation for: {tool_name}")
+        
         # Use concurrency management if available
         if self.concurrency_manager:
+            logger.log(ComponentType.TDD_GUARD, LogLevel.DEBUG, 
+                      f"🔒 Acquiring resource from pool: {self.resource_pool}")
+            
             with self.concurrency_manager.acquire_resource(
                 self.resource_pool,
                 {"operation": "tdd_validation", "tool": event_data.get("tool_name")},
                 timeout=30
             ) as acquired:
                 if not acquired:
-                    logger.warning("Could not acquire validation resource - allowing operation")
+                    logger.log(ComponentType.TDD_GUARD, LogLevel.WARNING, 
+                              "⚠️ Could not acquire validation resource - allowing operation")
                     return True, "⚠️ TDD validation skipped (resource limit)"
                     
+                logger.log(ComponentType.TDD_GUARD, LogLevel.DEBUG, 
+                          "🔓 Resource acquired, proceeding with validation")
                 return self._validate_tdd_compliance(event_data)
         else:
+            logger.log(ComponentType.TDD_GUARD, LogLevel.DEBUG, 
+                      "🔓 No concurrency manager, proceeding with validation")
             return self._validate_tdd_compliance(event_data)
             
     def _validate_tdd_compliance(self, event_data: Dict[str, Any]) -> Tuple[bool, str]:
         """Validate TDD compliance using TDD-Guard via external_loader."""
+        logger = get_unified_logger()
         tdd_timeout = min(self.timeout, 60)  # Define timeout at method level
         
         try:
             # Check if TDD-Guard is available
             if not self.external_loader.is_tool_available("tdd_guard"):
-                logger.debug("TDD-Guard not available - skipping validation")
+                logger.log(ComponentType.TDD_GUARD, LogLevel.WARNING, 
+                          "⚠️ TDD-Guard not available - skipping validation")
                 return True, "⚠️ TDD-Guard not available - skipping validation"
+                
+            logger.log(ComponentType.TDD_GUARD, LogLevel.DEBUG, 
+                      "✅ TDD-Guard available, preparing validation request")
                 
             # Prepare request for TDD-Guard
             request = self._prepare_tdd_request(event_data)
+            logger.log(ComponentType.TDD_GUARD, LogLevel.DEBUG, 
+                      f"📋 TDD validation request prepared: {len(json.dumps(request))} chars")
             
             # Get tool info and build command
             tool_info = self.external_loader.get_tool_info("tdd_guard")
             command = self._build_tdd_command(tool_info)
+            logger.log(ComponentType.TDD_GUARD, LogLevel.DEBUG, 
+                      f"🔧 TDD-Guard command: {' '.join(command) if isinstance(command, list) else str(command)}")
             
             # Call TDD-Guard CLI with proper timeout
             # Use a shorter timeout for TDD-Guard itself (it has its own Claude timeout)
             tdd_timeout = min(self.timeout, 60)  # Max 60 seconds for TDD-Guard
+            
+            logger.log(ComponentType.TDD_GUARD, LogLevel.INFO, 
+                      f"⏱️ Running TDD-Guard with timeout: {tdd_timeout}s")
             
             result = subprocess.run(
                 command,
@@ -100,22 +141,28 @@ class TDDGuardHook(BaseHook):
                 env=self._get_environment()
             )
             
+            logger.log(ComponentType.TDD_GUARD, LogLevel.DEBUG, 
+                      f"✅ TDD-Guard completed with exit code: {result.returncode}")
+            
             if result.returncode != 0:
-                logger.error(f"TDD-Guard error: {result.stderr}")
+                logger.log(ComponentType.TDD_GUARD, LogLevel.ERROR, 
+                          f"❌ TDD-Guard error: {result.stderr}")
                 return True, "⚠️ TDD validation error - allowing operation"
                 
             # Parse TDD-Guard response
             return self._parse_tdd_response(result.stdout)
             
         except subprocess.TimeoutExpired:
-            logger.warning(f"TDD-Guard validation timed out after {tdd_timeout}s")
+            logger.log(ComponentType.TDD_GUARD, LogLevel.WARNING, 
+                      f"⏱️ TDD-Guard validation timed out after {tdd_timeout}s")
             # For timeouts, we should be more conservative - block by default in strict mode
             if self.strict_mode:
                 return False, "🛑 TDD validation timed out - blocking operation (strict mode). Try again in a moment."
             else:
                 return True, "⚠️ TDD validation timed out - allowing operation"
         except Exception as e:
-            logger.error(f"TDD validation error: {e}")
+            logger.log(ComponentType.TDD_GUARD, LogLevel.ERROR, 
+                      f"❌ TDD validation error: {e}")
             return True, "⚠️ TDD validation failed - allowing operation"
             
     def _build_tdd_command(self, tool_info: Dict[str, Any]) -> list:
@@ -211,10 +258,12 @@ class TDDGuardHook(BaseHook):
             return should_continue, "\n".join(message_parts)
             
         except json.JSONDecodeError:
-            logger.error(f"Invalid TDD-Guard response: {response}")
+            logger.log(ComponentType.TDD_GUARD, LogLevel.ERROR, 
+                      f"❌ Invalid TDD-Guard response: {response}")
             return True, ""
         except Exception as e:
-            logger.error(f"Error parsing TDD response: {e}")
+            logger.log(ComponentType.TDD_GUARD, LogLevel.ERROR, 
+                      f"❌ Error parsing TDD response: {e}")
             return True, ""
             
     def _get_environment(self) -> Dict[str, str]:
