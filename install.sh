@@ -382,7 +382,7 @@ if "hooks" not in settings:
 claude_buddy_hooks = {
     "PreToolUse": [
         {
-            "matcher": {},  # Empty matcher means all tools
+            # No matcher field means it applies to all tools
             "hooks": [
                 {
                     "type": "command",
@@ -394,7 +394,7 @@ claude_buddy_hooks = {
     ],
     "PostToolUse": [
         {
-            "matcher": {},  # Empty matcher means all tools
+            # No matcher field means it applies to all tools
             "hooks": [
                 {
                     "type": "command",
@@ -430,7 +430,6 @@ else
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": {},
         "hooks": [
           {
             "type": "command",
@@ -442,7 +441,6 @@ else
     ],
     "PostToolUse": [
       {
-        "matcher": {},
         "hooks": [
           {
             "type": "command",
